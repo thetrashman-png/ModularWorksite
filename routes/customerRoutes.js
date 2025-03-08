@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const Customer = require("../models/Customer");
+const Booking = require("../models/Booking");
 const subdomainMiddleware = require("../middleware/subdomainMiddleware");
 
-// Apply subdomain middleware to associate requests with the correct business
 router.use(subdomainMiddleware);
 
 // 📌 Create a New Customer
@@ -42,16 +42,22 @@ router.get("/", async (req, res) => {
     }
 });
 
-// 📌 Get a Specific Customer (by ID)
+// 📌 Get Customer Details (With Booking History)
 router.get("/:id", async (req, res) => {
     try {
-        const customer = await Customer.findOne({ _id: req.params.id, business: req.business._id });
+        const customer = await Customer.findOne({
+            _id: req.params.id,
+            business: req.business._id
+        });
 
         if (!customer) {
             return res.status(404).json({ message: "Customer not found." });
         }
 
-        res.json(customer);
+        // Fetch past and future bookings linked to this customer
+        const bookings = await Booking.find({ customer: customer._id }).sort({ date: 1 });
+
+        res.json({ customer, bookings });
     } catch (error) {
         console.error("Error fetching customer:", error);
         res.status(500).json({ message: "Server error while fetching customer." });

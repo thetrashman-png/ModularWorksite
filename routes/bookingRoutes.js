@@ -4,7 +4,6 @@ const Booking = require("../models/Booking");
 const Customer = require("../models/Customer");
 const subdomainMiddleware = require("../middleware/subdomainMiddleware");
 
-// Apply subdomain middleware to associate bookings with the correct business
 router.use(subdomainMiddleware);
 
 // 📌 Create a Booking (with Customer Integration)
@@ -50,11 +49,26 @@ router.post("/", async (req, res) => {
     }
 });
 
-// 📌 Get All Bookings for a Business (with Customer Details)
+// 📌 Get Bookings with Filters (Date Range & Status)
 router.get("/", async (req, res) => {
     try {
-        const bookings = await Booking.find({ business: req.business._id })
-            .populate("customer", "name phone email") // Fetch customer details
+        let query = { business: req.business._id };
+
+        // Apply status filter
+        if (req.query.status) {
+            query.status = req.query.status;
+        }
+
+        // Apply date range filter
+        if (req.query.startDate && req.query.endDate) {
+            query.date = {
+                $gte: new Date(req.query.startDate),
+                $lte: new Date(req.query.endDate)
+            };
+        }
+
+        const bookings = await Booking.find(query)
+            .populate("customer", "name phone email")
             .sort({ date: 1 });
 
         res.json(bookings);
@@ -81,6 +95,36 @@ router.put("/:id/cancel", async (req, res) => {
     }
 });
 
+// 📌 Update Booking Status (Confirm, Reschedule, Cancel)
+router.put("/:id/status", async (req, res) => {
+    try {
+        const { status, newDate } = req.body;
+
+        const booking = await Booking.findOne({
+            _id: req.params.id,
+            business: req.business._id
+        });
+
+        if (!booking) {
+            return res.status(404).json({ message: "Booking not found." });
+        }
+
+        if (status) {
+            booking.status = status;
+        }
+
+        if (newDate) {
+            booking.date = newDate;
+        }
+
+        await booking.save();
+        res.json({ message: "Booking updated successfully.", booking });
+    } catch (error) {
+        console.error("Error updating booking status:", error);
+        res.status(500).json({ message: "Server error while updating booking." });
+    }
+});
+
 // 📌 Delete a Booking (by ID)
 router.delete("/:id", async (req, res) => {
     try {
@@ -90,7 +134,7 @@ router.delete("/:id", async (req, res) => {
         });
 
         if (!booking) {
-            return res.status(404).json({ message: "Booking not found" });
+            return res.status(404).json({ message: "Booking not found." });
         }
 
         await booking.deleteOne();
