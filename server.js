@@ -6,6 +6,7 @@ const cors = require("cors");
 // Import routes
 const userRoutes = require("./routes/userRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
+const customerRoutes = require("./routes/customerRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,6 +24,7 @@ mongoose
 // API Routes
 app.use("/api/users", userRoutes);         // User authentication routes
 app.use("/api/bookings", bookingRoutes);     // Booking routes with subdomain middleware
+app.use("/api/customers", customerRoutes);
 
 // Root Route
 app.get("/", (req, res) => {
